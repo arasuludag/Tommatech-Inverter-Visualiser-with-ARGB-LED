@@ -4,7 +4,7 @@
 #include <ESP8266HTTPClient.h>
 #include <ArduinoJson.h>
 #include <FastLED.h>
-#include "secrets.h" // Define SECRET_SSID, SECRET_PASSWORD, SECRET_FINGERPRINT, SECRET_USERNAME and SECRET_PASSWORD in secrets.h
+#include "secrets.h" // Define SECRET_SSID, SECRET_WIFI_PASSWORD, SECRET_FINGERPRINT, SECRET_USERNAME and SECRET_PASSWORD in secrets.h
 
 #define LED_PIN     16
 #define NUM_LEDS    24
@@ -25,7 +25,7 @@ const char fingerprint[] PROGMEM = SECRET_FINGERPRINT;
 
 void setup() {
   FastLED.addLeds <WS2812, LED_PIN, GRB> (leds, NUM_LEDS);
-  FastLED.setMaxPowerInMilliWatts(800);
+  FastLED.setMaxPowerInMilliWatts(2500);
 
 
   Serial.begin(115200);
