@@ -154,7 +154,7 @@ void Light(int FeedIn, int Grid)
 {
 
   int feedInMapped = map(FeedIn, -SYSTEM_SIZE, SYSTEM_SIZE, -NUM_LEDS, NUM_LEDS);
-  int gridMapped = map(Grid, -SYSTEM_SIZE, SYSTEM_SIZE, -NUM_LEDS, NUM_LEDS);
+  int gridMapped = map(Grid, 0, SYSTEM_SIZE, 0, NUM_LEDS);
 
   Serial.print("Grid Mapped: ");
   Serial.println(gridMapped);
