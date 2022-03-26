@@ -78,35 +78,35 @@ void loop() {
     Serial.println("Connected to web.");
   }
 
-if (tokenExpired) {
-  String LoginLink = "/phoebus/login/loginNew";
-  httpsClient.print(String("POST ") + LoginLink + "?username=" + SECRET_USERNAME + "&" + "userpwd=" SECRET_PASSWORD + " HTTP/1.1\r\n" + "Host: " + host + "\r\n" + "Content-Type: application/x-www-form-urlencoded;charset=UTF-8" + "\r\n" + "\r\n");
+  if (tokenExpired) {
+    String LoginLink = "/phoebus/login/loginNew";
+    httpsClient.print(String("POST ") + LoginLink + "?username=" + SECRET_USERNAME + "&" + "userpwd=" SECRET_PASSWORD + " HTTP/1.1\r\n" + "Host: " + host + "\r\n" + "Content-Type: application/x-www-form-urlencoded;charset=UTF-8" + "\r\n" + "\r\n");
 
-  Serial.print("Token request sent. ");
+    Serial.print("Token request sent. ");
 
-  while (httpsClient.connected()) {
-    String line = httpsClient.readStringUntil('\n');
-    if (line == "\r") {
-      Serial.print("Token received: ");
-      break;
+    while (httpsClient.connected()) {
+      String line = httpsClient.readStringUntil('\n');
+      if (line == "\r") {
+        Serial.print("Token received: ");
+        break;
+      }
+    }
+
+    String lineLogin;
+    while (httpsClient.available()) {
+      lineLogin = httpsClient.readStringUntil('\n');  // Read Line by Line
+
+      if (lineLogin.startsWith("{")) {
+
+        DynamicJsonDocument res(4096);
+        deserializeJson(res, lineLogin);
+        JsonObject obj = res.as<JsonObject>();
+        String tokenTemp = obj["token"];
+        token = tokenTemp;
+        Serial.println(token);
+      }
     }
   }
-
-  String lineLogin;
-  while (httpsClient.available()) {
-    lineLogin = httpsClient.readStringUntil('\n');  // Read Line by Line
-
-    if (lineLogin.startsWith("{")) {
-
-      DynamicJsonDocument res(4096);
-      deserializeJson(res, lineLogin);
-      JsonObject obj = res.as<JsonObject>();
-      String tokenTemp = obj["token"];
-      token = tokenTemp;
-      Serial.println(token);
-    }
-  }
-}
 
   String LinkGetPower = "/phoebus/userIndex/getPower";
   httpsClient.print(String("POST ") + LinkGetPower + "?token=" + token + " HTTP/1.1\r\n" + "Host: " + host + "\r\n" + "Content-Type: application/x-www-form-urlencoded;charset=UTF-8" + "\r\n" + "\r\n");
@@ -129,6 +129,8 @@ if (tokenExpired) {
       DynamicJsonDocument res(1024);
       deserializeJson(res, linePower);
       JsonObject obj = res.as<JsonObject>();
+
+      // {"ratedPower":9.1,"gridPower":249.0,"relay2Power":0.0,"feedInPower":5.0,"relay1Power":0.0,"batPower1":0.0}
 
       if (!obj.containsKey("gridPower")) {
         Serial.println("Token Expired.");
@@ -155,7 +157,7 @@ if (tokenExpired) {
 
       Light(feedInPower.toInt(), gridPower.toInt());
 
-      // POST the JSON data to the local IP. 
+      // POST the JSON data to the local IP.
       // Maybe we can use it later to fetch with another device.
       postLocal(linePower);
       
@@ -237,30 +239,34 @@ void Light(int FeedIn, int Grid) {
 
   Serial.println("__________");
 
+  // {"ratedPower":9.1,"gridPower":249.0,"relay2Power":0.0,"feedInPower":5.0,"relay1Power":0.0,"batPower1":0.0}
+  // Solar usage is gridPower - feedInPower when feedInPower > 0.
+  int solarHomeUsage = FeedIn > 0 ? gridMapped - feedInMapped : gridMapped;
+
   for (int i = 0; i < NUM_LEDS; i++) {
 
-    if (FeedIn < 0 && gridMapped <= i && i < -feedInMapped + gridMapped) {
-      leds[i] = CRGB(255, 10, 0);
-      delay(100);
-      FastLED.show();  // These seperate .show()s are because of some sort of bug with ESP8266.
-      continue;
-    }
-
-    if (FeedIn > 0 && gridMapped <= i && i < feedInMapped + gridMapped) {
-      leds[i] = CRGB(255, 70, 0);
-      delay(100);
-      FastLED.show();
-      continue;
-    }
-
-    if (i < gridMapped) {
+    if (i < solarHomeUsage) {
       leds[i] = CRGB(0, 255, 200);
       delay(100);
       FastLED.show();
       continue;
     }
 
-    leds[i] = CRGB(0, 0, 0);
-    FastLED.show();
+    else if (FeedIn < 0 && i < -feedInMapped + solarHomeUsage) {
+      leds[i] = CRGB(255, 20, 0);
+      delay(100);
+      FastLED.show();  // These seperate .show()s are because of some sort of bug with ESP8266.
+    }
+
+    else if (FeedIn > 0 && i < feedInMapped + solarHomeUsage) {
+      leds[i] = CRGB(255, 70, 0);
+      delay(100);
+      FastLED.show();
+    }
+
+    else {
+      leds[i] = CRGB(0, 0, 0);
+      FastLED.show();
+    }
   }
 }
