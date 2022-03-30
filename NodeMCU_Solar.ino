@@ -60,7 +60,9 @@ void setup() {
 
 void loop() {
   WiFiClientSecure httpsClient;  //Declare object of class WiFiClient
-  httpsClient.setFingerprint(fingerprint);
+
+  //httpsClient.setFingerprint(fingerprint);
+  httpsClient.setInsecure();  // The fingerprint stopped working suddenly after many days. This should be also okay.
 
   httpsClient.setTimeout(15000);  // 15 Seconds
   delay(1000);
@@ -73,8 +75,9 @@ void loop() {
     r++;
   }
   if (r == 30) {
+
     Serial.println("Connection failed.");
-  } else {
+    return;
     Serial.println("Connected to web.");
   }
 
@@ -159,12 +162,13 @@ void loop() {
 
       // POST the JSON data to the local IP.
       // Maybe we can use it later to fetch with another device.
-      postLocal(linePower);
-      
-      delay(10000);
+      // Checks for clients every second but we need to have 20 seconds of delay for the loop function. This is a good solution.
+      for (int i = 0; i < 60; i++) {
+        postLocal(linePower);
+        delay(1000);
+      }
     }
   }
-  
 }
 
 // Variable to store the HTTP request
@@ -172,25 +176,25 @@ String header;
 // Current time
 unsigned long currentTime = millis();
 // Previous time
-unsigned long previousTime = 0; 
+unsigned long previousTime = 0;
 // Define timeout time in milliseconds (example: 2000ms = 2s)
 const long timeoutTime = 2000;
 
-void postLocal (String linePower) {
-  WiFiClient client = server.available();   // Listen for incoming clients
+void postLocal(String linePower) {
+  WiFiClient client = server.available();  // Listen for incoming clients
 
-  if (client) {                             // If a new client connects,
-    Serial.println("New Client.");          // print a message out in the serial port
-    String currentLine = "";                // make a String to hold incoming data from the client
+  if (client) {                     // If a new client connects,
+    Serial.println("New Client.");  // print a message out in the serial port
+    String currentLine = "";        // make a String to hold incoming data from the client
     currentTime = millis();
     previousTime = currentTime;
-    while (client.connected() && currentTime - previousTime <= timeoutTime) { // loop while the client's connected
-      currentTime = millis();         
-      if (client.available()) {             // if there's bytes to read from the client,
-        char c = client.read();             // read a byte, then
-        Serial.write(c);                    // print it out the serial monitor
+    while (client.connected() && currentTime - previousTime <= timeoutTime) {  // loop while the client's connected
+      currentTime = millis();
+      if (client.available()) {  // if there's bytes to read from the client,
+        char c = client.read();  // read a byte, then
+        Serial.write(c);         // print it out the serial monitor
         header += c;
-        if (c == '\n') {                    // if the byte is a newline character
+        if (c == '\n') {  // if the byte is a newline character
           // if the current line is blank, you got two newline characters in a row.
           // that's the end of the client HTTP request, so send a response:
           if (currentLine.length() == 0) {
@@ -200,15 +204,15 @@ void postLocal (String linePower) {
             client.println("Content-type:application/json");
             client.println("Connection: close");
             client.println();
-            
+
             client.println(linePower);
-            
+
             // The HTTP response ends with another blank line
             client.println();
             // Break out of the while loop
             break;
 
-          } else { // if you got a newline, then clear currentLine
+          } else {  // if you got a newline, then clear currentLine
             currentLine = "";
           }
 
