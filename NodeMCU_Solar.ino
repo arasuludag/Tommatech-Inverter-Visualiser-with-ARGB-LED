@@ -19,6 +19,7 @@ CRGB leds[NUM_LEDS];
 const char *ssid = SECRET_SSID;  // WIFI Stuff
 const char *password = SECRET_WIFI_PASSWORD;
 
+String token;
 bool tokenExpired = true;
 
 const char *host = "www.tommatech-portal.de";
@@ -80,7 +81,6 @@ void loop() {
     Serial.println("Connected to web.");
   }
 
-  String token;
   if (tokenExpired) {
     String LoginLink = "/phoebus/login/loginNew";
     httpsClient.print(String("POST ") + LoginLink + "?username=" + SECRET_USERNAME + "&" + "userpwd=" SECRET_PASSWORD + " HTTP/1.1\r\n" + "Host: " + host + "\r\n" + "Content-Type: application/x-www-form-urlencoded;charset=UTF-8" + "\r\n" + "\r\n");
