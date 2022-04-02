@@ -19,7 +19,6 @@ CRGB leds[NUM_LEDS];
 const char *ssid = SECRET_SSID;  // WIFI Stuff
 const char *password = SECRET_WIFI_PASSWORD;
 
-String token;  // This needs to be global. Session token.
 bool tokenExpired = true;
 
 const char *host = "www.tommatech-portal.de";
@@ -81,6 +80,7 @@ void loop() {
     Serial.println("Connected to web.");
   }
 
+  String token;
   if (tokenExpired) {
     String LoginLink = "/phoebus/login/loginNew";
     httpsClient.print(String("POST ") + LoginLink + "?username=" + SECRET_USERNAME + "&" + "userpwd=" SECRET_PASSWORD + " HTTP/1.1\r\n" + "Host: " + host + "\r\n" + "Content-Type: application/x-www-form-urlencoded;charset=UTF-8" + "\r\n" + "\r\n");
@@ -104,8 +104,8 @@ void loop() {
         DynamicJsonDocument res(4096);
         deserializeJson(res, lineLogin);
         JsonObject obj = res.as<JsonObject>();
-        String tokenTemp = obj["token"];
-        token = tokenTemp;
+
+        token = obj["token"].as<String>();
         Serial.println(token);
       }
     }
@@ -129,7 +129,7 @@ void loop() {
     linePower = httpsClient.readStringUntil('\n');  //Read Line by Line
     if (linePower.startsWith("{")) {
 
-      DynamicJsonDocument res(1024);
+      StaticJsonDocument<256> res;
       deserializeJson(res, linePower);
       JsonObject obj = res.as<JsonObject>();
 
@@ -143,8 +143,8 @@ void loop() {
         tokenExpired = false;
       }
 
-      String gridPower = obj["gridPower"];
-      String feedInPower = obj["feedInPower"];
+      int gridPower = obj["gridPower"].as<signed int>();
+      int feedInPower = obj["feedInPower"].as<signed int>();
 
 
       // Print values.
@@ -158,7 +158,7 @@ void loop() {
 
       Serial.println("__________");
 
-      Light(feedInPower.toInt(), gridPower.toInt());
+      Light(feedInPower, gridPower);
 
       // POST the JSON data to the local IP.
       // Maybe we can use it later to fetch with another device.
@@ -171,23 +171,28 @@ void loop() {
   }
 }
 
-// Variable to store the HTTP request
-String header;
-// Current time
-unsigned long currentTime = millis();
-// Previous time
-unsigned long previousTime = 0;
+
 // Define timeout time in milliseconds (example: 2000ms = 2s)
 const long timeoutTime = 2000;
 
 void postLocal(String linePower) {
+
+  // Variable to store the HTTP request
+  String header;
+  // Current time
+  unsigned long currentTime = millis();
+  // Previous time
+  unsigned long previousTime = 0;
+
   WiFiClient client = server.available();  // Listen for incoming clients
 
   if (client) {                     // If a new client connects,
+
     Serial.println("New Client.");  // print a message out in the serial port
     String currentLine = "";        // make a String to hold incoming data from the client
     currentTime = millis();
     previousTime = currentTime;
+
     while (client.connected() && currentTime - previousTime <= timeoutTime) {  // loop while the client's connected
       currentTime = millis();
       if (client.available()) {  // if there's bytes to read from the client,
@@ -201,7 +206,7 @@ void postLocal(String linePower) {
             // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
             // and a content-type so the client knows what's coming, then a blank line:
             client.println("HTTP/1.1 200 OK");
-            client.println("Content-type:application/json");
+            client.println("Content-type: application/json");
             client.println("Connection: close");
             client.println();
 
@@ -221,8 +226,7 @@ void postLocal(String linePower) {
         }
       }
     }
-    // Clear the header variable
-    header = "";
+
     // Close the connection
     client.stop();
     Serial.println("Client disconnected.");
