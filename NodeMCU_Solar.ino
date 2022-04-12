@@ -11,7 +11,7 @@
 #include "secrets.h"  // Define SECRET_SSID, SECRET_WIFI_PASSWORD, SECRET_FINGERPRINT, SECRET_USERNAME and SECRET_PASSWORD in secrets.h
 
 #define LED_PIN 16
-#define NUM_LEDS 28
+#define NUM_LEDS 39
 CRGB leds[NUM_LEDS];
 
 #define SYSTEM_SIZE 8000  // Peak wattage of the solar system.
@@ -75,10 +75,8 @@ void loop() {
     r++;
   }
   if (r == 30) {
-
     Serial.println("Connection failed.");
     return;
-    Serial.println("Connected to web.");
   }
 
   if (tokenExpired) {
@@ -158,31 +156,23 @@ void loop() {
 
       Serial.println("__________");
 
-      Light(feedInPower, gridPower);
-
       // POST the JSON data to the local IP.
       // Maybe we can use it later to fetch with another device.
       // Checks for clients every second but we need to have 20 seconds of delay for the loop function. This is a good solution.
       for (int i = 0; i < 60; i++) {
         postLocal(linePower);
-        delay(1000);
+        delay(500);
+        Light(feedInPower, gridPower);
+        delay(500);
       }
     }
   }
 }
 
-
-// Define timeout time in milliseconds (example: 2000ms = 2s)
-const long timeoutTime = 2000;
-
 void postLocal(String linePower) {
 
   // Variable to store the HTTP request
   String header;
-  // Current time
-  unsigned long currentTime = millis();
-  // Previous time
-  unsigned long previousTime = 0;
 
   WiFiClient client = server.available();  // Listen for incoming clients
 
@@ -190,11 +180,9 @@ void postLocal(String linePower) {
 
     Serial.println("New Client.");  // print a message out in the serial port
     String currentLine = "";        // make a String to hold incoming data from the client
-    currentTime = millis();
-    previousTime = currentTime;
 
-    while (client.connected() && currentTime - previousTime <= timeoutTime) {  // loop while the client's connected
-      currentTime = millis();
+    while (client.connected()) {  // loop while the client's connected
+
       if (client.available()) {  // if there's bytes to read from the client,
         char c = client.read();  // read a byte, then
         Serial.write(c);         // print it out the serial monitor
@@ -251,30 +239,23 @@ void Light(int FeedIn, int Grid) {
   // Solar usage is gridPower - feedInPower when feedInPower > 0.
   int solarHomeUsage = FeedIn > 0 ? gridMapped - feedInMapped : gridMapped;
 
+  FastLED.clear();
+
   for (int i = 0; i < NUM_LEDS; i++) {
 
-    if (i < solarHomeUsage) {
-      leds[i] = CRGB(0, 255, 200);
-      delay(100);
-      FastLED.show();
+     if (i < solarHomeUsage) {
+      leds[i].setRGB( 0, 200, 255);
       continue;
     }
 
     else if (FeedIn < 0 && i < -feedInMapped + solarHomeUsage) {
-      leds[i] = CRGB(255, 20, 0);
-      delay(100);
-      FastLED.show();  // These seperate .show()s are because of some sort of bug with ESP8266.
+      leds[i].setRGB( 255, 20, 0);
     }
 
     else if (FeedIn > 0 && i < feedInMapped + solarHomeUsage) {
-      leds[i] = CRGB(255, 70, 0);
-      delay(100);
-      FastLED.show();
-    }
-
-    else {
-      leds[i] = CRGB(0, 0, 0);
-      FastLED.show();
+      leds[i].setRGB( 255, 70, 0);
     }
   }
+
+  FastLED.show();  
 }
