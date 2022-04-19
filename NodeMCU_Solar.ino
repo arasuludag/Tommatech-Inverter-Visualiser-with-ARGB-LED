@@ -161,9 +161,9 @@ void loop() {
       // Checks for clients every second but we need to have 20 seconds of delay for the loop function. This is a good solution.
       for (int i = 0; i < 60; i++) {
         postLocal(linePower);
-        delay(500);
+        FastLED.delay(1000);
         Light(feedInPower, gridPower);
-        delay(500);
+        FastLED.delay(1000);
       }
     }
   }
